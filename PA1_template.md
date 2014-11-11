@@ -7,10 +7,7 @@ output:html_document
 
 ## Introduction
 
-```{r setoptions, echo=FALSE}
-#opts_chunk$set(scipen=1,digits=4)
-options(scipen=1,digits=4)
-```
+
 
 This study makes use of data from a personal activity monitoring device
 which recorded every footstep taken by an anonymous person.
@@ -19,62 +16,118 @@ value 500 is 5:00 a.m for example. The data consists of two months of data.
 
 ## Loading and processing the data
 Load the data frame from CSV file:
-```{r loaddata}
+
+```r
 library(sqldf)
 library(data.table)
 library(ggplot2)
 library(tcltk)
 df <- read.csv('activity.csv')
 summary(df)
+```
+
+```
+##      steps               date          interval   
+##  Min.   :  0.0   2012-10-01:  288   Min.   :   0  
+##  1st Qu.:  0.0   2012-10-02:  288   1st Qu.: 589  
+##  Median :  0.0   2012-10-03:  288   Median :1178  
+##  Mean   : 37.4   2012-10-04:  288   Mean   :1178  
+##  3rd Qu.: 12.0   2012-10-05:  288   3rd Qu.:1766  
+##  Max.   :806.0   2012-10-06:  288   Max.   :2355  
+##  NA's   :2304    (Other)   :15840
+```
+
+```r
 str(df)
 ```
+
+```
+## 'data.frame':	17568 obs. of  3 variables:
+##  $ steps   : int  NA NA NA NA NA NA NA NA NA NA ...
+##  $ date    : Factor w/ 61 levels "2012-10-01","2012-10-02",..: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ interval: int  0 5 10 15 20 25 30 35 40 45 ...
+```
 Remove rows containing missing values:
-```{r removemissing}
+
+```r
 ok <- complete.cases(df)
 x <- df[ok,]
 dim(df)
+```
+
+```
+## [1] 17568     3
+```
+
+```r
 dim(x)
+```
+
+```
+## [1] 15264     3
+```
+
+```r
 df <- x
 ```
 
 ## Mean total number of steps taken per day
 
 Computing mean and median of total number of steps per day:
-```{r computecenters}
+
+```r
 dt <- data.table(df)
 dailysteps <- dt[,sum(steps),by=date]
 mn <- mean(dailysteps$V1)
 md <- median(dailysteps$V1)
 ```
 Excluding incomplete observations, the total number of steps per day mean is
-`r mn` and median is `r md`.
+10766.1887 and median is 10765.
 
 Histogram of the total number of steps taken each day:
-```{r histdailysteps}
-qplot(dailysteps$V1,binwidth=2000, ylab='Number of days')
 
+```r
+qplot(dailysteps$V1,binwidth=2000, ylab='Number of days')
 ```
+
+![plot of chunk histdailysteps](figure/histdailysteps.png) 
 
 ## Average daily activity pattern
 
 Time series plot (i.e. type = "l") of the 5-second interval (x-axis) and the
 average number of steps taken, averaged across all days (y-axis):
-```{r timeseriestypicalday}
+
+```r
 avgsteps <- dt[, mean(steps), by=interval]
 plot(avgsteps$interval, avgsteps$V1, type='l',
      xlab='Which 5-second interval of a day (500 is 5:00 a.m.)',
      ylab='Average steps taken')
 ```
 
+![plot of chunk timeseriestypicalday](figure/timeseriestypicalday.png) 
+
 Which 5-second interval, on average across all the days in the dataset, contains
 the maximum number of steps?
 
-```{r computemaxinterval}
+
+```r
 max(avgsteps$V1)
+```
+
+```
+## [1] 206.2
+```
+
+```r
 themax <- avgsteps[which(max(V1)==V1)]
 print(themax)
 ```
-The answer is interval `r themax[,interval]`, which agrees with the location of
+
+```
+##    interval    V1
+## 1:      835 206.2
+```
+The answer is interval 835, which agrees with the location of
 the big spike on the time series plot above.
 
 ## Imputing missing values
@@ -87,7 +140,8 @@ the rows that had missing values.
 It row-binds (unions) the good rows and the imputed rows together again.
 It computes a new daily sum of steps on the re-unioned rows.
 It shows the histogram of the new daily sum of steps.
-```{r impute}
+
+```r
 df <- read.csv('activity.csv')
 dt <- data.table(df)
 ok <- complete.cases(dt); #print(head(ok))
@@ -105,14 +159,16 @@ mdi <- median(dailysteps$V1); #print(md)
 qplot(dailysteps$V1, binwidth=2000, ylab='Number of days')
 ```
 
+![plot of chunk impute](figure/impute.png) 
+
 When including imputed values instead of skipping the cases having missing data,
-the total number of steps per day mean is `r mni` and median is `r mdi`.
+the total number of steps per day mean is 10749.7705 and median is 10641.
 Compared to the same computations made on complete cases only, the mean changed
-by `r mni-mn`, and median by `r mdi-md`.
+by -16.4182, and median by -124.
 
 The impact of imputing missing data on the estimates of the total daily number
-of steps is, when the change expressed as a percentage, `r 100*(mni-mn)/mn` for
-the mean and `r 100*(mdi-md)/md` for the median.  There was a large growth in
+of steps is, when the change expressed as a percentage, -0.1525 for
+the mean and -1.1519 for the median.  There was a large growth in
 height of the mode or highest bar in the histogram, which was about 15 frequency
 then it became about 25 frequency after imputation. The other bars heights were
 unchanged. The imputation assigned mean values where there had been missing
@@ -127,7 +183,8 @@ effectively highlights where the weekday and weekend curves differ from each
 other. Weekends have the most steps in the afternoon. Weekdays have the most
 steps happening in the morning.
 
-```{r weekends}
+
+```r
 iswe <- weekdays(as.Date(reunioned$date)) %in% c('Saturday', 'Sunday')
 w <- ifelse(iswe, 'weekend', 'weekday')
 reunioned$weekend <- as.factor(w);
@@ -138,11 +195,16 @@ qplot(interval, V1, color=weekend, data=avgsteps, geom=c('line', 'smooth'),
       xlab='Which 5-second interval of the day', ylab='Average number of steps')
 ```
 
+![plot of chunk weekends](figure/weekends.png) 
+
 Below is the project required graphic. It puts the weekend and weekday curves
 each into its own graph.
 
-```{r weekendsrequired}
+
+```r
 qplot(interval, V1, facets=weekend~., data=avgsteps, geom=c('line'),
       xlab='Which 5-second interval of the day', ylab='Average number of steps')
 ```
+
+![plot of chunk weekendsrequired](figure/weekendsrequired.png) 
 
